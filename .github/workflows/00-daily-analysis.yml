@@ -424,8 +424,8 @@ jobs:
           # ==========================================
           # 避免直接写入 STOCK_LIST，保留同名 Environment variables 的 runner 环境值。
           STOCK_LIST_CONFIG: ${{ vars.STOCK_LIST || secrets.STOCK_LIST }}
-          MARKET_REVIEW_REGION: ${{ vars.MARKET_REVIEW_REGION || secrets.MARKET_REVIEW_REGION || 'cn' }}
-          MARKET_REVIEW_COLOR_SCHEME: ${{ vars.MARKET_REVIEW_COLOR_SCHEME || secrets.MARKET_REVIEW_COLOR_SCHEME || 'green_up' }}
+          MARKET_REVIEW_REGION: ${{ vars.MARKET_REVIEW_REGION || secrets.MARKET_REVIEW_REGION || 'tw' }}
+          MARKET_REVIEW_COLOR_SCHEME: ${{ vars.MARKET_REVIEW_COLOR_SCHEME || secrets.MARKET_REVIEW_COLOR_SCHEME || 'red_up' }}
           
           # ==========================================
           # 运行配置 ⬅️ 新增！
@@ -455,10 +455,22 @@ jobs:
           # 1. Repository/Environment secrets 或 Repository variables（STOCK_LIST_CONFIG）
           # 2. 同名 Environment variables 注入的 runner 环境变量（STOCK_LIST）
           # 3. 最小默认值
-          if [ -n "${STOCK_LIST_CONFIG:-}" ]; then
-            export STOCK_LIST="$STOCK_LIST_CONFIG"
-          elif [ -z "${STOCK_LIST:-}" ]; then
-            export STOCK_LIST="600519"
+          # 執行台股動態選股（策略1：量價爆發與突破均線）
+          if [ -f "scripts/dynamic_screener.py" ]; then
+            echo "🔍 正在執行台股策略1動態選股（量價爆發・突破MA20）..."
+            DYNAMIC_STOCKS=$(python scripts/dynamic_screener.py 2>/dev/null | tail -n 1)
+            if [ -n "$DYNAMIC_STOCKS" ]; then
+              export STOCK_LIST="$DYNAMIC_STOCKS"
+              echo "🎯 今日動態選股成功，分析標的: $STOCK_LIST"
+            fi
+          fi
+
+          if [ -z "${STOCK_LIST:-}" ]; then
+            if [ -n "${STOCK_LIST_CONFIG:-}" ]; then
+              export STOCK_LIST="$STOCK_LIST_CONFIG"
+            else
+              export STOCK_LIST="2330.TW,2454.TW,2317.TW"
+            fi
           fi
 
           # 处理 LITELLM YAML 配置文件
